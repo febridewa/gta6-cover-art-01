@@ -1,25 +1,32 @@
-// Neon Coast Cover Studio — the editor.
+// Vice Grid Cover Studio — the editor (round 2).
 // Owns the state, the control panel, photo uploads, per-panel pan/zoom,
 // the live preview and the PNG export. Photos never leave the machine.
-import { drawCover, SIZES, LAYOUTS, GRADES } from './cover.js';
+import { drawCover, SIZES, LAYOUTS, GRADES, MAX_PANELS, layoutGeometry } from './cover.js';
 import { runShot } from './shots.js';
 
 const canvas = document.getElementById('preview');
 const statusEl = document.getElementById('status');
 const captionInput = document.getElementById('caption');
+const kickerInput = document.getElementById('kicker');
 const subInput = document.getElementById('subcaption');
 
 const state = {
-  layout: 'poster',
-  grade: 'sunset',
+  layout: 'nine',
+  grade: 'golden',
   sizeKey: '1920x1080',
-  caption: 'SUNSET HEIST',
-  subcaption: 'vice city nights',
+  kicker: 'VICE CITY',
+  caption: 'VICE GRID',
+  subcaption: 'neon coast nights',
   captionSize: 1,
   captionY: 0.55,
+  halftone: true,
+  frame: true,
   selected: 0,
-  panels: [{}, {}, {}, {}],
+  panels: Array.from({ length: MAX_PANELS }, () => ({})),
 };
+
+// The photos the user has loaded, in load order, for shuffle / fill-all.
+const library = [];
 
 export function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -34,14 +41,17 @@ function currentSize() {
   return SIZES[state.sizeKey];
 }
 
+function panelCount() {
+  return (LAYOUTS[state.layout] || LAYOUTS.nine).panels;
+}
+
 function renderPreview() {
   const { w, h } = currentSize();
   if (canvas.width !== w || canvas.height !== h) {
     canvas.width = w;
     canvas.height = h;
   }
-  const ctx = canvas.getContext('2d');
-  drawCover(ctx, w, h, state, true);
+  drawCover(canvas.getContext('2d'), w, h, state, true);
   canvas.dataset.layout = state.layout;
   canvas.dataset.size = state.sizeKey;
 }
@@ -50,16 +60,36 @@ function setStatus(text) {
   statusEl.textContent = text;
 }
 
-/** Fill every panel with the given image (each panel keeps its own crop). */
+/** Put one image into every panel of the current layout. */
 function fillAllPanels(img) {
-  state.panels = state.panels.map((p) => ({ ...p, image: img }));
+  for (let i = 0; i < panelCount(); i += 1) {
+    state.panels[i] = { ...state.panels[i], image: img };
+  }
   renderPreview();
 }
 
 async function loadSample(name) {
   const img = await loadImage(`samples/${name}.jpg`);
+  if (!library.includes(img)) library.push(img);
   fillAllPanels(img);
-  setStatus(`Sample ${name} loaded into all panels — pick a panel to change it.`);
+  setStatus(`Sample ${name} loaded into all ${panelCount()} panels — pick a panel to change it.`);
+}
+
+/** Alternate the two samples across the panels, like a real poster. */
+async function loadMixedSamples() {
+  const first = await loadImage('samples/pier.jpg');
+  const second = await loadImage('samples/boulevard.jpg');
+  if (!library.includes(first)) library.push(first);
+  if (!library.includes(second)) library.push(second);
+  for (let i = 0; i < panelCount(); i += 1) {
+    state.panels[i] = {
+      ...state.panels[i],
+      image: i % 2 === 0 ? first : second,
+      zoom: 1, ox: 0, oy: 0,
+    };
+  }
+  renderPreview();
+  setStatus(`Mixed samples across ${panelCount()} panels — drag a panel to re-crop it.`);
 }
 
 function selectPanel(i) {
@@ -73,7 +103,7 @@ function syncPanelControls() {
   document.getElementById('zoom').value = p.zoom || 1;
   document.getElementById('zoomVal').textContent = `${Math.round((p.zoom || 1) * 100)}%`;
   document.getElementById('fitToggle').textContent = p.fit === 'fit' ? 'Fit: contain' : 'Fit: fill';
-  document.getElementById('panelLabel').textContent = `Panel ${state.selected + 1} of ${state.panels.length}`;
+  document.getElementById('panelLabel').textContent = `Panel ${state.selected + 1} of ${panelCount()}`;
 }
 
 function buildOptionButtons(containerId, entries, current, onPick) {
@@ -96,6 +126,8 @@ function buildOptionButtons(containerId, entries, current, onPick) {
 
 buildOptionButtons('layoutBox', LAYOUTS, state.layout, (key) => {
   state.layout = key;
+  if (state.selected >= panelCount()) state.selected = 0;
+  syncPanelControls();
   renderPreview();
 });
 buildOptionButtons('gradeBox', GRADES, state.grade, (key) => {
@@ -116,6 +148,10 @@ Object.entries(SIZES).forEach(([key, info]) => {
   sizeBox.appendChild(label);
 });
 
+kickerInput.addEventListener('input', () => {
+  state.kicker = kickerInput.value;
+  renderPreview();
+});
 captionInput.addEventListener('input', () => {
   state.caption = captionInput.value;
   renderPreview();
@@ -131,6 +167,16 @@ document.getElementById('capSize').addEventListener('input', (e) => {
 });
 document.getElementById('capY').addEventListener('input', (e) => {
   state.captionY = Number(e.target.value);
+  renderPreview();
+});
+document.getElementById('halftoneToggle').addEventListener('click', (e) => {
+  state.halftone = !state.halftone;
+  e.target.textContent = state.halftone ? 'Halftone titles: on' : 'Halftone titles: off';
+  renderPreview();
+});
+document.getElementById('frameToggle').addEventListener('click', (e) => {
+  state.frame = !state.frame;
+  e.target.textContent = state.frame ? 'Neon frame: on' : 'Neon frame: off';
   renderPreview();
 });
 
@@ -152,14 +198,31 @@ document.getElementById('fillAll').addEventListener('click', () => {
   fillAllPanels(img);
   setStatus('All panels now use the selected panel’s photo.');
 });
+document.getElementById('shuffle').addEventListener('click', () => {
+  if (library.length < 2) { setStatus('Load two photos (or the mixed samples) to shuffle.'); return; }
+  for (let i = 0; i < panelCount(); i += 1) {
+    const img = library[Math.floor(Math.random() * library.length)];
+    state.panels[i] = { ...state.panels[i], image: img };
+  }
+  renderPreview();
+  setStatus('Panels shuffled across your loaded photos.');
+});
+document.getElementById('resetPanels').addEventListener('click', () => {
+  state.panels = Array.from({ length: MAX_PANELS }, () => ({}));
+  state.selected = 0;
+  syncPanelControls();
+  renderPreview();
+  setStatus('Panels cleared — load a photo or try a sample.');
+});
 
 document.getElementById('photo').addEventListener('change', async (e) => {
   const files = [...e.target.files];
   if (!files.length) return;
   try {
     const imgs = await Promise.all(files.map((f) => loadImage(URL.createObjectURL(f))));
+    imgs.forEach((img) => { if (!library.includes(img)) library.push(img); });
     imgs.forEach((img, k) => {
-      const idx = (state.selected + k) % state.panels.length;
+      const idx = (state.selected + k) % panelCount();
       state.panels[idx] = { ...state.panels[idx], image: img, zoom: 1, ox: 0, oy: 0 };
     });
     renderPreview();
@@ -172,6 +235,9 @@ document.getElementById('photo').addEventListener('change', async (e) => {
 
 document.querySelectorAll('[data-sample]').forEach((b) => {
   b.addEventListener('click', () => loadSample(b.dataset.sample).catch((err) => setStatus(err.message)));
+});
+document.getElementById('mixSamples').addEventListener('click', () => {
+  loadMixedSamples().catch((err) => setStatus(err.message));
 });
 
 // Click a panel to select it; drag to pan its photo.
@@ -197,10 +263,8 @@ canvas.addEventListener('pointermove', (e) => {
   if (Math.abs(dx) + Math.abs(dy) > 0.002) drag.moved = true;
   const p = state.panels[drag.panel];
   if (p && p.image && drag.moved) {
-    p.ox = (p.ox || 0) + dx;
-    p.oy = (p.oy || 0) + dy;
-    p.ox = Math.max(-0.6, Math.min(0.6, p.ox));
-    p.oy = Math.max(-0.6, Math.min(0.6, p.oy));
+    p.ox = Math.max(-0.6, Math.min(0.6, (p.ox || 0) + dx));
+    p.oy = Math.max(-0.6, Math.min(0.6, (p.oy || 0) + dy));
     drag.pt = pt;
     renderPreview();
   }
@@ -209,12 +273,10 @@ canvas.addEventListener('pointerup', (e) => {
   if (!drag) return;
   if (!drag.moved) {
     // A plain click selects the panel under the pointer.
-    import('./cover.js').then(({ layoutGeometry }) => {
-      const { panels } = layoutGeometry(state.layout, canvas.width, canvas.height);
-      const pt = canvasPoint(e);
-      const hit = panels.findIndex((r) => pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h);
-      if (hit >= 0) selectPanel(hit);
-    });
+    const { panels } = layoutGeometry(state.layout, canvas.width, canvas.height);
+    const pt = canvasPoint(e);
+    const hit = panels.findIndex((r) => pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h);
+    if (hit >= 0) selectPanel(hit);
   }
   drag = null;
 });
@@ -229,23 +291,39 @@ export function exportPNG(sizeKey) {
   return off.toDataURL('image/png');
 }
 
-document.getElementById('export').addEventListener('click', () => {
-  const dataUrl = exportPNG(state.sizeKey);
+function downloadPNG(sizeKey) {
   const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = `neon-coast-cover-${state.sizeKey}.png`;
+  a.href = exportPNG(sizeKey);
+  a.download = `vice-grid-cover-${sizeKey}.png`;
   a.click();
-  setStatus(`Exported neon-coast-cover-${state.sizeKey}.png — ${SIZES[state.sizeKey].label}.`);
+}
+
+document.getElementById('export').addEventListener('click', () => {
+  downloadPNG(state.sizeKey);
+  setStatus(`Exported vice-grid-cover-${state.sizeKey}.png — ${SIZES[state.sizeKey].label}.`);
+});
+document.getElementById('exportAll').addEventListener('click', () => {
+  Object.keys(SIZES).forEach((key, i) => {
+    window.setTimeout(() => downloadPNG(key), i * 350);
+  });
+  setStatus('Exporting all 3 sizes — 1080 × 1080, 1080 × 1350 and 1920 × 1080.');
 });
 
 // Test / screenshot hooks.
 window.__coverApp = {
   state,
+  library,
   renderPreview,
   exportPNG,
   loadSample,
+  loadMixedSamples,
   selectPanel,
-  setLayout: (layout) => { state.layout = layout; renderPreview(); },
+  setLayout: (layout) => {
+    state.layout = layout;
+    if (state.selected >= panelCount()) state.selected = 0;
+    syncPanelControls();
+    renderPreview();
+  },
   setGrade: (grade) => { state.grade = grade; renderPreview(); },
 };
 
@@ -254,6 +332,7 @@ async function boot() {
     await Promise.all([
       document.fonts.load('80px Anton'),
       document.fonts.load('40px Pacifico'),
+      document.fonts.load('20px "Archivo Black"'),
     ]);
   } catch { /* fonts fall back; canvas still draws */ }
   const query = new URLSearchParams(location.search);
@@ -261,7 +340,7 @@ async function boot() {
   if (shot) {
     await runShot(shot, query, state, renderPreview, loadImage, setStatus);
   } else {
-    await loadSample('pier').catch(() => renderPreview());
+    await loadMixedSamples().catch(() => renderPreview());
     syncPanelControls();
     renderPreview();
   }

@@ -1,18 +1,19 @@
-// Neon Coast Cover Studio — a gta6-cover-art-01 entry (Node 22, stdlib only).
+// Vice Grid Cover Studio — the entry program (round 2, Node 22, stdlib only).
 //
-// The app lives in this directory's app/ folder: plain static files that a
-// desktop browser loads offline (app/index.html plus its ES modules, OFL fonts
-// and sample photos; no library, no network request at run time). This program
-// hands the entry in: it copies app/ and screenshots/ from beside this file
-// into /output and writes /output/dossier.json, the summary the judge reads,
-// using the vendored make.fun library (vendor/makefun-app.ts, unchanged).
+// The app is plain static files in this directory's app/ folder: an offline
+// cover maker (index.html, ES modules, OFL fonts and sample photos — no
+// library, no network at run time). This program is what hands the entry in:
+// it stages a copy of app/ and screenshots/ under /output and writes
+// /output/dossier.json, the summary the judge reads, using the vendored
+// make.fun library (vendor/makefun-app.ts, shipped unchanged by the kit).
 //
-// The app turns a person's own photos into a multi-panel GTA-style poster:
-// three switchable layouts, a Vice City sunset/neon grade per panel, bold
-// Anton + Pacifico lettering (both OFL, shipped under app/fonts/), and
-// one-click PNG export at 1080 x 1080, 1080 x 1350 and 1920 x 1080.
-// Its sample photos (app/samples/) were made for make.fun with an image model
-// and are free to use; every decoration is drawn by the app's own code.
+// The app turns a person's own photos into a nine-panel Vice City poster:
+// seven switchable layouts, eight sunset/neon grades, per-panel crop and
+// zoom, a halftone title block in Anton / Archivo Black / Pacifico (all OFL,
+// under app/fonts/), and one-click PNG export at 1080 x 1080, 1080 x 1350
+// and 1920 x 1080 — individually or all three at once. Its sample photos
+// (app/samples/) were made for make.fun with an image model and are free to
+// use; every decoration is drawn by the app's own canvas code.
 //
 // Try it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
@@ -33,11 +34,11 @@ if (existsSync(join(here, 'screenshots'))) {
   cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
 }
 
-// Caps matching the gate (reference/gate.json): text_max_bytes is the only one
-// that changes the dossier's bytes; the rest refuse an entry the scorer would
-// refuse anyway — more than 4 screenshots or one over 256 KiB, more than 993
-// files or 48 MiB under app/, or a path under app/ over 1000 bytes (app/
-// shares /output's own 1000-entry cap with screenshots/ and dossier.json).
+// Caps matching the gate (reference/gate.json): text_max_bytes is the only
+// one that changes the dossier's bytes; the rest refuse an entry the scorer
+// would refuse anyway — more than 4 screenshots or one over 256 KiB, more
+// than 993 files or 48 MiB under app/, or a path under app/ over 1000 bytes
+// (app/ shares /output's own 1000-entry cap with screenshots/ and dossier).
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

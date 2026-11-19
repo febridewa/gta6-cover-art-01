@@ -1,3 +1,4 @@
 out/
 out2/
 node_modules/
+# Round 2: generated outputs and local dependencies stay out of the repo.

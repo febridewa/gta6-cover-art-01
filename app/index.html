@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Neon Coast Cover Studio — GTA 6-style cover maker</title>
+<title>Vice Grid Cover Studio — GTA 6-style cover maker</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <main class="app">
   <section class="stage">
     <div class="stage-head">
-      <h1>Neon Coast <span>Cover Studio</span></h1>
-      <p class="tagline">Turn your photos into a Vice City sunset poster — right on your machine.</p>
+      <h1>Vice Grid <span>Cover Studio</span></h1>
+      <p class="tagline">Nine-panel Vice City posters from your own photos — on your machine, offline.</p>
     </div>
     <div class="canvas-wrap">
       <canvas id="preview" width="1920" height="1080" aria-label="Live cover preview"></canvas>
@@ -28,43 +28,56 @@
       <div class="row">
         <button type="button" data-sample="pier">Try Pier</button>
         <button type="button" data-sample="boulevard">Try Boulevard</button>
+        <button type="button" id="mixSamples">Mix both</button>
       </div>
-      <button type="button" id="fillAll">Fill all panels with this photo</button>
+      <div class="row">
+        <button type="button" id="fillAll">Fill all panels</button>
+        <button type="button" id="shuffle">Shuffle photos</button>
+      </div>
+      <button type="button" id="resetPanels" class="quiet">Clear panels</button>
       <p class="fine">Sample photos are image-model-made and free to use.</p>
     </section>
 
     <section class="group">
-      <h2>2 · Layout</h2>
+      <h2>2 · Layout — 7 ways</h2>
       <div class="opts" id="layoutBox"></div>
     </section>
 
     <section class="group">
-      <h2>3 · Vice City grade</h2>
+      <h2>3 · Vice grade — 8 looks</h2>
       <div class="opts" id="gradeBox"></div>
     </section>
 
     <section class="group">
-      <h2>4 · Selected panel <span id="panelLabel">Panel 1 of 4</span></h2>
+      <h2>4 · Selected panel <span id="panelLabel">Panel 1 of 9</span></h2>
       <label>Zoom <input id="zoom" type="range" min="1" max="3" step="0.05" value="1"> <output id="zoomVal">100%</output></label>
       <button type="button" id="fitToggle">Fit: fill</button>
     </section>
 
     <section class="group">
-      <h2>5 · Caption</h2>
+      <h2>5 · Title block</h2>
+      <label>Kicker (small caps)
+        <input id="kicker" type="text" maxlength="24" value="VICE CITY">
+      </label>
       <label>Caption
-        <input id="caption" type="text" maxlength="24" value="SUNSET HEIST">
+        <input id="caption" type="text" maxlength="24" value="VICE GRID">
       </label>
       <label>Sub-caption (script)
-        <input id="subcaption" type="text" maxlength="40" value="vice city nights">
+        <input id="subcaption" type="text" maxlength="40" value="neon coast nights">
       </label>
       <label>Caption size <input id="capSize" type="range" min="0.6" max="1.6" step="0.05" value="1"> <output id="capSizeVal">100%</output></label>
       <label>Caption height <input id="capY" type="range" min="0.1" max="0.9" step="0.05" value="0.55"></label>
+      <div class="row">
+        <button type="button" id="halftoneToggle">Halftone titles: on</button>
+        <button type="button" id="frameToggle">Neon frame: on</button>
+      </div>
     </section>
 
     <section class="group">
       <h2>6 · Export PNG</h2>
       <div id="sizeBox" class="sizes"></div>
       <button type="button" id="export" class="export">Export PNG</button>
+      <button type="button" id="exportAll" class="export all">Export all 3 sizes at once</button>
       <p id="status" role="status">Load a photo, pick a layout, export.</p>
     </section>
   </aside>
