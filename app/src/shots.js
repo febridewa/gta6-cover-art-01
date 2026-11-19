@@ -1,48 +1,52 @@
-// Fixed scenes for screenshots (round 2).
+// Fixed scenes for screenshots (round 3).
 // ?shot=cover shows the exported cover alone (controls hidden).
 // ?shot=editor shows the editor with sample photos loaded.
 // `photo` picks the first sample, `photo2` the second, `caption` the words,
 // `kicker` the small line above it, `layout` and `grade` the look.
 // window.__shotReady is set by main.js once the scene has painted.
-import { LAYOUTS } from './cover.js';
+import { COMPOSITIONS } from './cover.js';
 
-export async function runShot(shot, query, state, renderPreview, loadImage, setStatus) {
-  const photoName = query.get('photo') ?? 'pier';
-  const secondPhoto = query.get('photo2') ?? 'boulevard';
-  const caption = query.get('caption') ?? 'VICE GRID';
+export async function stageShot(shot, query, model, paintPreview, fetchImage, say) {
+  const firstName = query.get('photo') ?? 'pier';
+  const secondName = query.get('photo2') ?? 'boulevard';
+  const caption = query.get('caption') ?? 'SUNSET TILT';
   const kicker = query.get('kicker') ?? 'VICE CITY';
   const sub = query.get('sub') ?? 'neon coast nights';
-  state.layout = query.get('layout') ?? 'nine';
-  state.grade = query.get('grade') ?? 'golden';
-  state.sizeKey = query.get('size') ?? '1920x1080';
-  state.kicker = kicker;
-  state.caption = caption;
-  state.subcaption = sub;
-  state.captionSize = Number(query.get('capSize') ?? 1);
-  state.captionY = Number(query.get('capY') ?? 0.55);
-  state.halftone = query.get('halftone') !== 'off';
-  state.frame = query.get('frame') !== 'off';
+  model.layout = query.get('layout') ?? 'tilt';
+  model.grade = query.get('grade') ?? 'solar';
+  model.sizeKey = query.get('size') ?? '1920x1080';
+  model.kicker = kicker;
+  model.caption = caption;
+  model.subcaption = sub;
+  model.captionScale = Number(query.get('capSize') ?? 1);
+  model.captionLift = Number(query.get('capY') ?? 0.55);
+  model.halftone = query.get('halftone') !== 'off';
+  model.frame = query.get('frame') !== 'off';
+  model.filter = undefined;
 
-  const first = await loadImage(`samples/${photoName}.jpg`);
-  const second = await loadImage(`samples/${secondPhoto}.jpg`);
-  const count = (LAYOUTS[state.layout] || LAYOUTS.nine).panels;
-  // Alternate the two samples across the panels; give the hero / first panel
-  // a gentle zoom and a nudge down so a tall subject stays in frame.
-  state.panels = state.panels.map((p, i) => {
-    const hero = i === 0 && (state.layout === 'poster' || state.layout === 'mosaic');
+  const first = await fetchImage(`samples/${firstName}.jpg`);
+  const second = await fetchImage(`samples/${secondName}.jpg`);
+  const slots = (COMPOSITIONS[model.layout] || COMPOSITIONS.tilt).slots;
+  // Alternate the two samples across the slots. The hero slot gets a
+  // gentle zoom and a nudge down so a tall subject stays in frame, and the
+  // second slot gets the warm panel filter to show that feature off.
+  model.panels = model.panels.map((p, i) => {
+    const hero = i === 0;
     return {
       ...p,
       image: i % 2 === 0 ? first : second,
-      zoom: hero ? 1.15 : 1,
+      zoom: hero ? 1.05 : 1,
       ox: 0,
-      oy: hero ? 0.16 : 0,
+      oy: hero ? 0.05 : 0,
+      cover: true,
+      filter: i === 1 ? 'warm' : 'none',
     };
   });
-  // Panels past the layout's count keep no photo.
-  for (let i = count; i < state.panels.length; i += 1) {
-    state.panels[i] = {};
+  // Slots past this layout's count keep no photo.
+  for (let i = slots; i < model.panels.length; i += 1) {
+    model.panels[i] = {};
   }
-  state.selected = 0;
+  model.selected = 0;
 
   if (shot === 'cover') {
     document.body.classList.add('shot-cover');
@@ -50,7 +54,7 @@ export async function runShot(shot, query, state, renderPreview, loadImage, setS
     document.getElementById('caption').value = caption;
     document.getElementById('subcaption').value = sub;
   }
-  renderPreview();
-  setStatus(`Shot scene “${shot}” ready — ${state.layout} layout, ${state.grade} grade, ${count} panels.`);
+  paintPreview();
+  say(`Shot scene "${shot}" ready — ${model.layout} layout, ${model.grade} grade, ${slots} panels.`);
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
